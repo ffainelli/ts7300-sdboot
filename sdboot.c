@@ -6,9 +6,7 @@
  * Note: this must fit within 446 bytes of a MBR
  *
  * See LICENSE for details
- */
-
-/*
+*
  * Here is the state in which we start:
  *
  * R0 points to the sd_read function
@@ -17,11 +15,12 @@
  * The stack pointer is initialized in SRAM
  */
 
-int main(void(*sr_read)(unsigned int start_sector,
-			char *buffer, int num_sectors),
-	 void(*ser_puts)(char *buffer))
-{
-	ser_puts("Hello there!\n");
+static const char banner[] = "Hello world";
 
+int main(void (*sr_read)(unsigned int start_sector,
+			char *buffer, int num_sectors),
+	 void (*ser_puts)(const char *buffer))
+{
+	ser_puts(banner);
 	return 0;
 }

@@ -23,3 +23,7 @@ SECTIONS {
 		*(.ARM.*)
 	}
 }
+
+MEMORY {
+	RAM (wx) : org = 0x1000, len = 32M
+}
