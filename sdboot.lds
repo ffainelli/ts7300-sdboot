@@ -7,6 +7,7 @@ PHDRS {
 
 ENTRY(main)
 SECTIONS {
+	. = 0x1000;
 	.text : { * (.text_main); * (.text*); }:text = 0
 	.data : { * (.data); }
 	.rodata : { * (.rodata); }
@@ -24,6 +25,3 @@ SECTIONS {
 	}
 }
 
-MEMORY {
-	RAM (wx) : org = 0x1000, len = 32M
-}

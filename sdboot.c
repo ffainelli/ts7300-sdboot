@@ -14,13 +14,108 @@
  *
  * The stack pointer is initialized in SRAM
  */
+#include <inttypes.h>
 
-static const char banner[] = "Hello world";
+#include "mbr_defs.h"
+#include "atags_defs.h"
+
+/* First EP93xx SDRAM bank start at PA 0x0 */
+#define SDRAM_START_ADDR	0
+
+#define ATAGS_OFFSET		(SDRAM_START_ADDR + 0x100)
+#define MBR_LOADADDR		(SDRAM_START_ADDR + 0x1000)
+#define LINUX_LOADADDR		(SDRAM_START_ADDR + 0x218000)
+#define INITRD_LOADADDR		(SDRAM_START_ADDR + 0x1000000)
+
+/* From arch/arm/tools/mach-types */
+#define TS72XX_MACH_NUM		673
+
+static const struct mbr *mbr = (struct mbr *)MBR_LOADADDR;
+static struct atag *atags = (struct atag *)ATAGS_OFFSET;
+
+#ifdef DEBUG
+#define dbg_str(x)	ser_puts(x); ser_puts("\n\r");
+#else
+#define dbg_str(x)	do { } while (0);
+#endif
+
+static void die(void)
+{
+	while (1)
+		;
+}
+
+#define BUILD_BUG_ON(condition) ((void)sizeof(char[1 - 2*!!(condition)]))
 
 int main(void (*sr_read)(unsigned int start_sector,
 			char *buffer, int num_sectors),
 	 void (*ser_puts)(const char *buffer))
 {
-	ser_puts(banner);
+	char *dst = (char *)LINUX_LOADADDR;
+	const struct mbr_part *part;
+	unsigned found = 0;
+	unsigned int i;
+
+	BUILD_BUG_ON(sizeof(struct mbr_part) != 16);
+	BUILD_BUG_ON(sizeof(struct mbr) != SECT_SIZE);
+
+	if (mbr->sig != MBR_SIG) {
+		ser_puts("S");
+		die();
+	}
+
+	for (i = 0; i < NUM_PE; i++) {
+		part = &mbr->pe[i];
+
+		/* First partition is Linux */
+		if (part->type != PART_TYPE_OTHER_DATA) {
+			ser_puts("P");
+			continue;
+		}
+
+		ser_puts("L");
+		sr_read(part->lba, dst, part->num_sects);
+		ser_puts(".\r\n");
+		dst = (char *)INITRD_LOADADDR;
+		found = 1;
+	}
+
+	if (!found) {
+		dbg_str("N");
+		die();
+	}
+
+	/* Prepare ATAGS */
+	atags->hdr.tag = ATAG_CORE;
+	atags->hdr.size = atag_size(atag_core);
+	atags->u.core.flags = 1;
+	atags->u.core.pagesize = 4096;
+	atags->u.core.rootdev = 0;
+	atags = atag_next(atags);
+
+#if (SDRAM_SIZE_MB > 32)
+#error "Need to add additional ATAG_MEM for second bank!"
+#endif
+	atags->hdr.tag = ATAG_MEM;
+	atags->hdr.size = atag_size(atag_mem);
+	atags->u.mem.start = SDRAM_START_ADDR;
+	atags->u.mem.size = SDRAM_SIZE_MB << 20;
+	atags = atag_next(atags);
+
+	atags->hdr.tag = ATAG_INITRD2;
+	atags->hdr.size = atag_size(atag_initrd2);
+	atags->u.initrd2.start = INITRD_LOADADDR;
+	atags->u.initrd2.size = part->num_sects * SECT_SIZE;
+	atags = atag_next(atags);
+
+	atags->hdr.tag = ATAG_NONE;
+	atags->hdr.size = 0;
+
+	/* Start kernel, bye! */
+	ser_puts("G\r\n");
+
+	void (*kernel_start)(int, int, uint32_t) = (void *)LINUX_LOADADDR;
+	kernel_start(0, TS72XX_MACH_NUM, ATAGS_OFFSET);
+
 	return 0;
 }

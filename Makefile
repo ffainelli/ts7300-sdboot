@@ -1,10 +1,18 @@
 CFLAGS+=-Wall -ffreestanding -mthumb -march=armv4t -mtune=arm920t -Os \
-	-mabi=aapcs -mfloat-abi=softfp -nostartfiles -static -nostdlib
+	-mabi=aapcs -mfloat-abi=softfp -nostartfiles -static -nostdlib \
+	-g -Wextra
 CC=$(CROSS_COMPILE)gcc
 AS=$(CROSS_COMPILE)as
 OBJCOPY=$(CROSS_COMPILE)objcopy
 OBJDUMP=$(CROSS_COMPILE)objdump
 LD=$(CROSS_COMPILE)ld
+
+# Specific TS-7300 options
+ifeq ($(DBG_ENABLE),1)
+CFLAGS+= -DDEBUG
+endif
+SDRAM_SIZE_MB?=32
+CFLAGS+= -DSDRAM_SIZE_MB=$(SDRAM_SIZE_MB)
 
 drop-sections   = .comment .comments .ARM.exidx
 strip-flags     = $(addprefix --remove-section=,$(drop-sections)) \
@@ -12,7 +20,7 @@ strip-flags     = $(addprefix --remove-section=,$(drop-sections)) \
 
 all: sdboot.bin sdboot.dis
 
-sdboot: sdboot.c sdboot.lds
+sdboot: sdboot.c sdboot.lds mbr_defs.h atags_defs.h
 	$(CC) $(CFLAGS) -T sdboot.lds -o $@ $<
 
 sdboot.bin: sdboot
