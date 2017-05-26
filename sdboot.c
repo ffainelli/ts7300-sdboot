@@ -76,8 +76,8 @@ int main(void (*sr_read)(unsigned int start_sector,
 		ser_puts("L");
 		sr_read(part->lba, dst, part->num_sects);
 		ser_puts(".\r\n");
-		dst = (char *)INITRD_LOADADDR;
 		found = 1;
+		break;
 	}
 
 	if (!found) {
@@ -98,14 +98,26 @@ int main(void (*sr_read)(unsigned int start_sector,
 #endif
 	atags->hdr.tag = ATAG_MEM;
 	atags->hdr.size = atag_size(atag_mem);
-	atags->u.mem.start = SDRAM_START_ADDR;
-	atags->u.mem.size = SDRAM_SIZE_MB << 20;
+	atags->u.mem.start = 0;
+	atags->u.mem.size = 8 << 20;
 	atags = atag_next(atags);
 
-	atags->hdr.tag = ATAG_INITRD2;
-	atags->hdr.size = atag_size(atag_initrd2);
-	atags->u.initrd2.start = INITRD_LOADADDR;
-	atags->u.initrd2.size = part->num_sects * SECT_SIZE;
+	atags->hdr.tag = ATAG_MEM;
+	atags->hdr.size = atag_size(atag_mem);
+	atags->u.mem.start = 0x1000000;
+	atags->u.mem.size = 8 << 20;
+	atags = atag_next(atags);
+
+	atags->hdr.tag = ATAG_MEM;
+	atags->hdr.size = atag_size(atag_mem);
+	atags->u.mem.start = 0x4000000;
+	atags->u.mem.size = 8 << 20;
+	atags = atag_next(atags);
+
+	atags->hdr.tag = ATAG_MEM;
+	atags->hdr.size = atag_size(atag_mem);
+	atags->u.mem.start = 0x5000000;
+	atags->u.mem.size = 8 << 20;
 	atags = atag_next(atags);
 
 	atags->hdr.tag = ATAG_NONE;
