@@ -9,10 +9,11 @@
 *
  * Here is the state in which we start:
  *
- * R0 points to the sd_read function
+ * R0 points to the sr_read function
  * R1 points to the ser_puts function
  *
- * The stack pointer is initialized in SRAM
+ * The stack pointer is initialized in SRAM, the whole MBR has been
+ * copied into DRAM at 0x1000.
  */
 #include <inttypes.h>
 
@@ -52,8 +53,8 @@ int main(void (*sr_read)(unsigned int start_sector,
 	 void (*ser_puts)(const char *buffer))
 {
 	char *dst = (char *)LINUX_LOADADDR;
+	char dst_l = 'L';
 	const struct mbr_part *part;
-	unsigned found = 0;
 	unsigned int i;
 
 	BUILD_BUG_ON(sizeof(struct mbr_part) != 16);
@@ -73,16 +74,11 @@ int main(void (*sr_read)(unsigned int start_sector,
 			continue;
 		}
 
-		ser_puts("L");
+		ser_puts(&dst_l);
 		sr_read(part->lba, dst, part->num_sects);
-		ser_puts(".\r\n");
-		found = 1;
-		break;
-	}
-
-	if (!found) {
-		dbg_str("N");
-		die();
+		ser_puts(".");
+		dst = (char *)INITRD_LOADADDR;
+		dst_l = 'I';
 	}
 
 	/* Prepare ATAGS */
