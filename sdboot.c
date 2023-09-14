@@ -15,8 +15,6 @@
  * The stack pointer is initialized in SRAM, the whole MBR has been
  * copied into DRAM at 0x1000.
  */
-#include <inttypes.h>
-
 #include "mbr_defs.h"
 #include "atags_defs.h"
 
@@ -122,7 +120,7 @@ int main(void (*sr_read)(unsigned int start_sector,
 	/* Start kernel, bye! */
 	ser_puts("G\r\n");
 
-	void (*kernel_start)(int, int, uint32_t) = (void *)LINUX_LOADADDR;
+	void (*kernel_start)(int, int, unsigned int) = (void *)LINUX_LOADADDR;
 	kernel_start(0, TS72XX_MACH_NUM, ATAGS_OFFSET);
 
 	return 0;
